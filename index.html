@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>butesa</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: rgba(255,255,255,0.06);
+      --text: #e8e8e8;
+      --muted: #a7a7a7;
+      --accent: #bfbfbf;
+      --danger: #d94b4b;
+      --platform: #4b5563;
+      --player: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top, #0a0a0f 0%, var(--bg) 60%, #020205 100%);
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #hud {
+      padding: 12px 14px 8px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      align-items: center;
+      font-size: 11px;
+      color: #6b7280;
+      flex: 0 0 auto;
+      z-index: 10;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+      background: rgba(0,0,0,0.3);
+    }
+    #game {
+      display: block;
+      width: 100vw;
+      flex: 1 1 auto;
+      background: transparent;
+    }
+    #controls {
+      position: fixed;
+      bottom: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      z-index: 1000;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 50px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .btn {
+      border: 2px solid rgba(120,100,140,0.5);
+      background: rgba(0,0,0,0.7);
+      color: #b8b8d0;
+      border-radius: 50px;
+      width: 78px;
+      height: 78px;
+      font-size: 32px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all 0.05s linear;
+      font-family: 'Courier New', monospace;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .btn:active, .btn.active {
+      transform: scale(0.92);
+      background: rgba(80,60,100,0.9);
+      color: #e8e8ff;
+      border-color: rgba(160,140,200,0.9);
+    }
+    #message {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    #message .card {
+      width: min(92vw, 560px);
+      border: 1px solid rgba(120,100,140,0.5);
+      border-radius: 8px;
+      background: rgba(5,5,8,0.98);
+      padding: 28px 22px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    #message .cipher {
+      font-size: 19px;              /* ligeiramente menor para caber melhor */
+      letter-spacing: 4px;
+      line-height: 1.8;
+      color: #8b8b9b;
+      margin-bottom: 20px;
+      word-break: break-word;
+      font-family: monospace;
+      text-shadow: 0 0 10px rgba(100,100,150,0.3);
+      white-space: nowrap;          /* ← ESSA É A CORREÇÃO PRINCIPAL */
+      overflow-x: auto;
+      padding: 4px 0;
+    }
+    #message .quote {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 0;
+      font-style: italic;
+      letter-spacing: 0.5px;
+    }
+    #message .hint {
+      margin-top: 16px;
+      font-size: 11px;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+    }
+    .kbd {
+      font-family: 'Courier New', monospace;
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid rgba(100,100,120,0.3);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      margin: 0 2px;
+      color: #9ca3af;
+      background: rgba(0,0,0,0.4);
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="hud">
+      <div>[ <span class="kbd">WASD</span> / <span class="kbd">↑↓←→</span> ] &nbsp;|&nbsp; <span class="kbd">␣</span> / <span class="kbd">↑</span></div>
+    </div>
+    <canvas id="game"></canvas>
+    
+    <div id="controls" aria-label="Controles mobile">
+      <button class="btn" id="leftBtn">◀</button>
+      <button class="btn" id="jumpBtn">▲</button>
+      <button class="btn" id="rightBtn">▶</button>
+    </div>
+  </div>
+
+  <div id="message" role="dialog" aria-modal="true">
+    <div class="card">
+      <div class="cipher">22 5 18 4 1 4 5 19  15 13 9 20 9 4 1 19</div>
+      <p class="quote">"Lembre-se de como as letras foram ordenadas pela primeira vez."</p>
+      <div class="hint">◆ FIM DA JORNADA ◆</div>
+    </div>
+  </div>
+
+  <script>
+    /* TODO O JAVASCRIPT CONTINUA EXATAMENTE O MESMO DA ÚLTIMA VERSÃO QUE TE PASSEI */
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const message = document.getElementById('message');
+    let W = 0, H = 0, dpr = 1;
+    let gameLoopId = null;
+   
+    function resize() {
+      dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.floor(W * dpr);
+      canvas.height = Math.floor(H * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildLevel();
+    }
+   
+    window.addEventListener('resize', () => setTimeout(resize, 100));
+   
+    const keys = new Set();
+    const input = { left: false, right: false, jumpQueued: false };
+    const player = {
+      x: 60, y: 0, w: 26, h: 26, vx: 0, vy: 0,
+      speed: 3.5, jump: 11.5, onGround: false,
+      spawnX: 100, spawnY: 0,
+    };
+    const level = { platforms: [], door: null, bgStars: [], fogParticles: [] };
+
+    function generateStars() {
+      level.bgStars = Array.from({ length: 80 }, () => ({
+        x: Math.random() * 2600, y: Math.random() * 800,
+        r: Math.random() * 1.5 + 0.2, s: Math.random() * 0.2 + 0.03,
+        alpha: Math.random() * 0.5 + 0.2
+      }));
+    }
+   
+    function generateFog() {
+      level.fogParticles = Array.from({ length: 30 }, () => ({
+        x: Math.random() * 2600, y: Math.random() * H,
+        radius: Math.random() * 60 + 30, alpha: Math.random() * 0.08 + 0.02,
+        speed: Math.random() * 0.3 + 0.1
+      }));
+    }
+
+    function buildLevel() {
+      if (!H || H === 0) return;
+     
+      level.platforms = [
+        { x: 60, y: H - 130, w: 130, h: 18 },
+        { x: 260, y: H - 180, w: 140, h: 18 },
+        { x: 470, y: H - 250, w: 130, h: 18 },
+        { x: 660, y: H - 320, w: 140, h: 18 },
+        { x: 870, y: H - 260, w: 130, h: 18 },
+        { x: 1060, y: H - 190, w: 140, h: 18 },
+        { x: 1270, y: H - 270, w: 130, h: 18 },
+        { x: 1460, y: H - 340, w: 130, h: 18 },
+        { x: 1650, y: H - 250, w: 140, h: 18 },
+        { x: 1860, y: H - 180, w: 150, h: 18 },
+        { x: 2080, y: H - 130, w: 150, h: 18 },
+        { x: 2290, y: H - 180, w: 140, h: 18 }
+      ];
+     
+      const last = level.platforms[level.platforms.length - 1];
+      level.door = { x: 2370, y: last.y - 70, w: 45, h: 70 };
+     
+      player.spawnX = 100;
+      player.spawnY = H - 130 - player.h;
+     
+      generateStars();
+      generateFog();
+      resetPlayer();
+     
+      cam.x = 0; cam.y = 0;
+      completed = false;
+      message.style.display = 'none';
+    }
+   
+    function resetPlayer() {
+      player.x = player.spawnX;
+      player.y = player.spawnY;
+      player.vx = 0; player.vy = 0;
+      player.onGround = false;
+    }
+
+    const cam = { x: 0, y: 0 };
+    let completed = false;
+
+    function rectsOverlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, H);
+      gradient.addColorStop(0, '#050508');
+      gradient.addColorStop(1, '#0a0a10');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, W, H);
+     
+      ctx.save();
+      ctx.translate(-cam.x * 0.15, 0);
+      for (const s of level.bgStars) {
+        const twinkle = 0.4 + Math.sin(Date.now() * 0.0008 * s.s + s.x) * 0.2;
+        ctx.globalAlpha = s.alpha * twinkle;
+        ctx.fillStyle = `rgba(180, 180, 210, ${0.3 + twinkle * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+     
+      for (const fog of level.fogParticles) {
+        const offsetX = Math.sin(Date.now() * 0.0005 * fog.speed) * 10;
+        ctx.globalAlpha = fog.alpha;
+        ctx.fillStyle = `rgba(30, 20, 40, ${fog.alpha * 0.6})`;
+        ctx.beginPath();
+        ctx.ellipse(fog.x - cam.x * 0.3 + offsetX, fog.y, fog.radius, fog.radius * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPlatform(p) {
+      ctx.fillStyle = '#2a2a35';
+      ctx.fillRect(p.x - cam.x, p.y - cam.y, p.w, p.h);
+      ctx.fillStyle = 'rgba(80, 80, 100, 0.2)';
+      ctx.fillRect(p.x - cam.x, p.y - cam.y, p.w, 2);
+      ctx.fillStyle = 'rgba(20, 20, 30, 0.4)';
+      for(let i = 0; i < 4; i++) {
+        ctx.fillRect(p.x - cam.x + 8 + i*12, p.y - cam.y + 6, 5, 5);
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(p.x - cam.x, p.y - cam.y + p.h - 3, p.w, 3);
+    }
+
+    function drawDoor(d) {
+      const x = d.x - cam.x, y = d.y - cam.y;
+      ctx.fillStyle = '#1a1a24';
+      ctx.fillRect(x, y, d.w, d.h);
+      ctx.fillStyle = '#4a4a60';
+      ctx.fillRect(x + 8, y + 12, d.w - 16, 4);
+      ctx.fillRect(x + 8, y + 30, d.w - 16, 4);
+      ctx.fillRect(x + 8, y + 48, d.w - 16, 4);
+     
+      const pulse = 0.3 + Math.sin(Date.now() * 0.003) * 0.2;
+      ctx.fillStyle = `rgba(100, 80, 140, ${pulse})`;
+      ctx.fillRect(x + 5, y + 5, d.w - 10, d.h - 10);
+     
+      ctx.fillStyle = `rgba(140, 120, 180, ${pulse * 0.8})`;
+      ctx.font = `bold ${Math.floor(d.h * 0.4)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', x + d.w/2, y + d.h/2);
+    }
+
+    function drawPlayer() {
+      const x = player.x - cam.x, y = player.y - cam.y;
+      ctx.fillStyle = '#3a3a4a';
+      ctx.fillRect(x, y, player.w, player.h);
+      ctx.fillStyle = '#1a1a22';
+      ctx.fillRect(x + 7, y + 8, 4, 4);
+      ctx.fillRect(x + 15, y + 8, 4, 4);
+     
+      const eyeGlow = 0.3 + Math.sin(Date.now() * 0.008) * 0.2;
+      ctx.fillStyle = `rgba(120, 100, 160, ${eyeGlow})`;
+      ctx.fillRect(x + 8, y + 9, 2, 2);
+      ctx.fillRect(x + 16, y + 9, 2, 2);
+     
+      if(player.onGround) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(x + 2, y + player.h - 2, player.w - 4, 3);
+      }
+     
+      ctx.strokeStyle = `rgba(100, 80, 140, 0.3)`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 2, y - 2, player.w + 4, player.h + 4);
+    }
+
+    function resolveCollisions(axis) {
+      player.onGround = false;
+      for (const p of level.platforms) {
+        if (!rectsOverlap(player, p)) continue;
+        if (axis === 'y') {
+          if (player.vy >= 0 && (player.y + player.h <= p.y + player.vy + 8)) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.onGround = true;
+          } else if (player.vy < 0) {
+            player.y = p.y + p.h;
+            player.vy = 0;
+          }
+        } else {
+          if (player.vx > 0) player.x = p.x - player.w;
+          else if (player.vx < 0) player.x = p.x + p.w;
+          if (player.vx !== 0) player.vx = 0;
+        }
+      }
+    }
+
+    function update() {
+      if (completed) return;
+
+      const left = input.left || keys.has('ArrowLeft') || keys.has('a') || keys.has('A');
+      const right = input.right || keys.has('ArrowRight') || keys.has('d') || keys.has('D');
+      const jump = input.jumpQueued || keys.has(' ') || keys.has('Space') || keys.has('ArrowUp') || keys.has('w') || keys.has('W');
+
+      if (left && !right) player.vx = -player.speed;
+      else if (right && !left) player.vx = player.speed;
+      else player.vx *= 0.92;
+
+      player.vy += 0.58;
+      if (player.vy > 15) player.vy = 15;
+
+      player.x += player.vx;
+      resolveCollisions('x');
+
+      player.y += player.vy;
+      resolveCollisions('y');
+
+      if (jump && player.onGround) {
+        player.vy = -player.jump;
+        player.onGround = false;
+        input.jumpQueued = false;
+      }
+      if (!jump) input.jumpQueued = false;
+
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > 2600) player.x = 2600 - player.w;
+
+      if (player.y > H + 25 || player.y + player.h < -100) {
+        resetPlayer();
+        cam.x = 0;
+      }
+
+      let targetX = player.x - W * 0.35;
+      targetX = Math.max(0, Math.min(targetX, 2600 - W));
+      cam.x += (targetX - cam.x) * 0.12;
+      if (cam.x < 0) cam.x = 0;
+      if (cam.x > 2600 - W) cam.x = 2600 - W;
+
+      if (level.door && rectsOverlap(player, level.door)) {
+        completed = true;
+        message.style.display = 'flex';
+        player.vx = 0;
+        player.vy = 0;
+      }
+    }
+
+    function render() {
+      drawBackground();
+      for (const p of level.platforms) drawPlatform(p);
+      if (level.door) drawDoor(level.door);
+      drawPlayer();
+
+      const gradient = ctx.createRadialGradient(W/2, H/2, Math.min(W, H) * 0.2, W/2, H/2, Math.max(W, H) * 0.9);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.6, 'rgba(0,0,0,0.2)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(0, 0, W, 20);
+      ctx.fillRect(0, H-20, W, 20);
+    }
+
+    function gameLoop() {
+      update();
+      render();
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key;
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Space','a','A','d','D','w','W','s','S'].includes(key)) e.preventDefault();
+      if (key === ' ' || key === 'Space' || key === 'ArrowUp' || key === 'w' || key === 'W') {
+        input.jumpQueued = true;
+        e.preventDefault();
+      }
+      keys.add(key);
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys.delete(e.key);
+      if (e.key === ' ' || e.key === 'Space' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+        input.jumpQueued = false;
+      }
+    });
+
+    function bindHold(btn, onDown, onUp) {
+      if (!btn) return;
+      const start = (e) => { e.preventDefault(); onDown(); btn.classList.add('active'); };
+      const end = (e) => { e.preventDefault(); onUp(); btn.classList.remove('active'); };
+
+      btn.addEventListener('touchstart', start, { passive: false });
+      btn.addEventListener('touchend', end);
+      btn.addEventListener('touchcancel', end);
+      btn.addEventListener('mousedown', start);
+      btn.addEventListener('mouseup', end);
+      btn.addEventListener('mouseleave', end);
+    }
+
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const jumpBtn = document.getElementById('jumpBtn');
+
+    bindHold(leftBtn, () => { input.left = true; }, () => { input.left = false; });
+    bindHold(rightBtn, () => { input.right = true; }, () => { input.right = false; });
+
+    if (jumpBtn) {
+      const jumpStart = (e) => {
+        e.preventDefault();
+        input.jumpQueued = true;
+        jumpBtn.classList.add('active');
+        setTimeout(() => { if (!completed) input.jumpQueued = false; }, 120);
+      };
+      const jumpEnd = (e) => {
+        e.preventDefault();
+        jumpBtn.classList.remove('active');
+      };
+      jumpBtn.addEventListener('touchstart', jumpStart, { passive: false });
+      jumpBtn.addEventListener('touchend', jumpEnd);
+      jumpBtn.addEventListener('touchcancel', jumpEnd);
+      jumpBtn.addEventListener('mousedown', jumpStart);
+      jumpBtn.addEventListener('mouseup', jumpEnd);
+      jumpBtn.addEventListener('mouseleave', jumpEnd);
+    }
+
+    document.body.addEventListener('touchmove', (e) => {
+      if (e.target === canvas || e.target.closest('.btn')) e.preventDefault();
+    }, { passive: false });
+
+    resize();
+    gameLoop();
+  </script>
+</body>
+</html>
